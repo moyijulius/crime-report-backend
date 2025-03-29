@@ -20,6 +20,17 @@ app.use(cors({
 }));
 app.use(express.json());
 
+app.get('/', (req, res) => {
+  res.json({
+    status: 'API Running',
+    endpoints: {
+      api: '/api',
+      health: '/api/health',
+      auth: '/api/auth',
+      reports: '/api/reports'
+    }
+  });
+});
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,

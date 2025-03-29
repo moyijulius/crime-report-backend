@@ -33,6 +33,11 @@ mongoose.connect(process.env.MONGO_URI, {
   process.exit(1);
 });
 
+// Test Route - Add this before other routes
+app.get('/api', (req, res) => {
+  res.json({ message: "API is working!" });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);

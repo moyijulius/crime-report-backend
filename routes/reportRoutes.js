@@ -6,25 +6,41 @@ const Report = require('../models/Report');
 const authenticateToken = require('../middleware/authenticateToken');
 const { body, validationResult } = require('express-validator');
 const sanitizeFilename = require('sanitize-filename');
+const { put } = require('@vercel/blob'); // Vercel Blob Storage
 
-// Set up multer for file uploads
-const upload = multer({ dest: 'uploads/' });
+// Configure multer with memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 5 // Max 5 files
+  }
+});
 
+// Helper function to upload to Vercel Blob
+const uploadToBlob = async (fileBuffer, fileName, contentType) => {
+  try {
+    const blob = await put(fileName, fileBuffer, {
+      access: 'public',
+      contentType: contentType
+    });
+    return blob.url;
+  } catch (err) {
+    console.error('Blob upload error:', err);
+    throw new Error('Failed to upload file to storage');
+  }
+};
 
-
-// Submit a crime report - with optional authentication
+// Submit a crime report
 router.post(
   '/',
   (req, res, next) => {
-    // Try to authenticate but don't require it
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
     if (token) {
       jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (!err) {
-          req.user = user;
-        }
+        if (!err) req.user = user;
         next();
       });
     } else {
@@ -38,39 +54,46 @@ router.post(
     body('description').notEmpty().withMessage('Description is required'),
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    if (req.fileValidationError) {
-      return res.status(400).json({ error: req.fileValidationError });
-    }
-
-    const { crimeType, location, description, isAnonymous } = req.body;
-
-    const files = req.files ? req.files.map((file) => ({
-      path: file.path,
-      originalName: sanitizeFilename(file.originalname),
-
-    })) : [];
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { crimeType, location, description, isAnonymous } = req.body;
+
+      // Process files if they exist
+      let fileUrls = [];
+      if (req.files && req.files.length > 0) {
+        fileUrls = await Promise.all(
+          req.files.map(async (file) => ({
+            url: await uploadToBlob(
+              file.buffer,
+              `${Date.now()}-${sanitizeFilename(file.originalname)}`,
+              file.mimetype
+            ),
+            originalName: sanitizeFilename(file.originalname)
+          }))
+        );
+      }
+
       const report = new Report({
         crimeType,
         location,
         description,
         isAnonymous: isAnonymous === 'true',
-        files,
-        userId: req.user ? req.user.userId : null,
+        files: fileUrls,
+        userId: req.user?.userId || null,
       });
 
       await report.save();
-     
       res.status(201).json({ referenceNumber: report.referenceNumber });
     } catch (error) {
-    
-      res.status(500).json({ error: 'Error submitting report', details: error.message });
+      console.error('Report submission error:', error);
+      res.status(500).json({ 
+        error: 'Error submitting report',
+        ...(process.env.NODE_ENV === 'development' && { details: error.message })
+      });
     }
   }
 );

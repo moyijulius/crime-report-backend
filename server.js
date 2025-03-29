@@ -1,34 +1,58 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-
-
 const testimonialRoutes = require('./routes/testimonialRoutes');
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-const cors = require('cors');
-app.use(cors({ origin: 'https://crime-report-fronted.vercel.app/' }));
+app.use(cors({
+  origin: [
+    'https://crime-report-fronted.vercel.app',
+    'http://localhost:5173' // For development
+  ],
+  credentials: true
+}));
+app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.log(err));
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  retryWrites: true,
+  w: 'majority'
+})
+.then(() => console.log('MongoDB Connected'))
+.catch(err => {
+  console.error('MongoDB Connection Error:', err);
+  process.exit(1);
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api', testimonialRoutes);
-// Start Server
+app.use('/api/testimonials', testimonialRoutes);
+
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
+// Error Handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Server Error');
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

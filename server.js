@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');  // Make sure to install this: npm install cors
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -9,27 +10,41 @@ const testimonialRoutes = require('./routes/testimonialRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enhanced CORS Middleware
+// Define allowed origins
 const allowedOrigins = [
   'https://crime-report-fronted.vercel.app',
-  /\.crime-report-fronted(-[\w]+)?\.vercel\.app$/, // All preview deployments
+  /\.crime-report-fronted(-[\w]+)?\.vercel\.app$/,
   'http://localhost:5173'
 ];
 
+// Use the cors package for more reliable CORS handling
+const corsOptions = {
+  origin: function (origin, callback) {
+    // For requests without an origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is allowed
+    const allowed = allowedOrigins.some(pattern => 
+      typeof pattern === 'string' ? origin === pattern : pattern.test(origin)
+    );
+    
+    if (allowed) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+
+// For debugging - log all requests
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.some(pattern => 
-    typeof pattern === 'string' ? origin === pattern : pattern.test(origin)
-  )) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  }
-  
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin || 'No origin'}`);
   next();
 });
 
@@ -43,7 +58,8 @@ app.get('/', (req, res) => {
       api: '/api',
       health: '/api/health',
       auth: '/api/auth',
-      reports: '/api/reports'
+      reports: '/api/reports',
+      testimonials: '/api/testimonials'
     }
   });
 });
@@ -83,9 +99,9 @@ app.get('/api/health', (req, res) => {
 // Error Handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Server Error',
-    message: err.message 
+    message: err.message
   });
 });
 

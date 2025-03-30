@@ -122,14 +122,27 @@ router.post(
   }
 );
 // Get all reports for the logged-in user
+// Get all reports for the logged-in user
 router.get('/user', authenticateToken, async (req, res) => {
   try {
+    console.log(`Fetching reports for user: ${req.user.userId}`);
+    
     const reports = await Report.find({ userId: req.user.userId })
       .sort({ createdAt: -1 });
+    
+    console.log(`Found ${reports.length} reports`);
     res.json(reports);
+    
   } catch (error) {
-    console.error('Error fetching user reports:', error);
-    res.status(500).json({ error: 'Error fetching reports' });
+    console.error('Error fetching user reports:', {
+      userId: req.user?.userId,
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Error fetching reports',
+      ...(process.env.NODE_ENV !== 'production' && { details: error.message })
+    });
   }
 });
 

@@ -87,8 +87,8 @@ app.use('/api/testimonials', (req, res, next) => {
 });
 
 // Application Routes
-app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 

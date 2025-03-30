@@ -62,7 +62,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Fetch Profile
-router.get('/profile', authenticateToken, async (req, res) => {
+router.get('/api/profile', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
     res.json(user);
@@ -72,7 +72,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 });
 
 // Update Profile
-router.put('/profile', authenticateToken, async (req, res) => {
+router.put('/api/profile', authenticateToken, async (req, res) => {
   try {
     const { username, email, phone } = req.body;
     const user = await User.findByIdAndUpdate(

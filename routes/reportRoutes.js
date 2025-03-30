@@ -31,7 +31,6 @@ const uploadToBlob = async (fileBuffer, fileName, contentType) => {
   }
 };
 
-// Submit a crime report
 router.post(
   '/',
   (req, res, next) => {
@@ -57,7 +56,11 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        console.error('Validation errors:', errors.array());
+        return res.status(400).json({ 
+          error: 'Validation failed',
+          details: errors.array() 
+        });
       }
 
       const { crimeType, location, description, isAnonymous } = req.body;
@@ -65,16 +68,24 @@ router.post(
       // Process files if they exist
       let fileUrls = [];
       if (req.files && req.files.length > 0) {
-        fileUrls = await Promise.all(
-          req.files.map(async (file) => ({
-            url: await uploadToBlob(
-              file.buffer,
-              `${Date.now()}-${sanitizeFilename(file.originalname)}`,
-              file.mimetype
-            ),
-            originalName: sanitizeFilename(file.originalname)
-          }))
-        );
+        try {
+          fileUrls = await Promise.all(
+            req.files.map(async (file) => ({
+              url: await uploadToBlob(
+                file.buffer,
+                `${Date.now()}-${sanitizeFilename(file.originalname)}`,
+                file.mimetype
+              ),
+              originalName: sanitizeFilename(file.originalname)
+            }))
+          );
+        } catch (fileError) {
+          console.error('File upload error:', fileError);
+          return res.status(500).json({ 
+            error: 'Failed to upload files',
+            details: fileError.message 
+          });
+        }
       }
 
       const report = new Report({
@@ -87,12 +98,25 @@ router.post(
       });
 
       await report.save();
-      res.status(201).json({ referenceNumber: report.referenceNumber });
+      
+      console.log('Report saved successfully:', report.referenceNumber);
+      res.status(201).json({ 
+        success: true,
+        referenceNumber: report.referenceNumber 
+      });
+      
     } catch (error) {
-      console.error('Report submission error:', error);
+      console.error('Full report submission error:', {
+        message: error.message,
+        stack: error.stack,
+        body: req.body,
+        files: req.files ? req.files.map(f => f.originalname) : null
+      });
+      
       res.status(500).json({ 
         error: 'Error submitting report',
-        ...(process.env.NODE_ENV === 'development' && { details: error.message })
+        message: error.message,
+        ...(process.env.NODE_ENV !== 'production' && { stack: error.stack })
       });
     }
   }

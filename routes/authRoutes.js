@@ -6,7 +6,7 @@ const User = require('../models/User');
 const authenticateToken = require('../middleware/authenticateToken');
 
 // Register Route
-router.post('/auth/register', async (req, res) => {
+router.post('/', async (req, res) => {
   const { username, email, password, phone } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -19,7 +19,7 @@ router.post('/auth/register', async (req, res) => {
 });
 
 // Login Route
-router.post('/login', async (req, res) => {
+router.post('/', async (req, res) => {
   const { email, password } = req.body;
 
   try {

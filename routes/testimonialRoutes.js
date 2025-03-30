@@ -2,15 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Testimonial = require('../models/testimonial');
 
-router.options('/', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.sendStatus(200);
-});
-
-
 // Get all approved testimonials
-router.get('/', async (req, res) => {
+router.get('/testimonials', async (req, res) => {
   try {
     const testimonials = await Testimonial.find({ approved: true })
       .sort({ createdAt: -1 })
@@ -22,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create a new testimonial
-router.post('/', async (req, res) => {
+router.post('/testimonials', async (req, res) => {
   const testimonial = new Testimonial({
     text: req.body.text,
     rating: req.body.rating,
@@ -38,7 +31,7 @@ router.post('/', async (req, res) => {
 });
 
 // Admin route to approve testimonials
-router.patch('/:id/approve', async (req, res) => {
+router.patch('/testimonials/:id/approve', async (req, res) => {
   try {
     const testimonial = await Testimonial.findById(req.params.id);
     if (!testimonial) return res.status(404).json({ message: 'Testimonial not found' });

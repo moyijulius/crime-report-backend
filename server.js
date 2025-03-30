@@ -81,6 +81,10 @@ mongoose.connect(process.env.MONGO_URI, {
 app.get('/api', (req, res) => {
   res.json({ message: "API is working!" });
 });
+app.use('/api/testimonials', (req, res, next) => {
+  console.log(`Testimonials route hit: ${req.method} ${req.url}`);
+  next();
+});
 
 // Application Routes
 app.use('/api/auth', authRoutes);

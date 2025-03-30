@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -10,16 +9,33 @@ const testimonialRoutes = require('./routes/testimonialRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
-  origin: [
-    'https://crime-report-fronted.vercel.app',
-    'http://localhost:5173' // For development
-  ],
-  credentials: true
-}));
+// Enhanced CORS Middleware
+const allowedOrigins = [
+  'https://crime-report-fronted.vercel.app',
+  /\.crime-report-fronted(-[\w]+)?\.vercel\.app$/, // All preview deployments
+  'http://localhost:5173'
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.some(pattern => 
+    typeof pattern === 'string' ? origin === pattern : pattern.test(origin)
+  )) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 
+// Basic Routes
 app.get('/', (req, res) => {
   res.json({
     status: 'API Running',
@@ -31,6 +47,7 @@ app.get('/', (req, res) => {
     }
   });
 });
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -44,12 +61,12 @@ mongoose.connect(process.env.MONGO_URI, {
   process.exit(1);
 });
 
-// Test Route - Add this before other routes
+// Test Route
 app.get('/api', (req, res) => {
   res.json({ message: "API is working!" });
 });
 
-// Routes
+// Application Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
@@ -66,7 +83,10 @@ app.get('/api/health', (req, res) => {
 // Error Handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).send('Server Error');
+  res.status(500).json({ 
+    error: 'Server Error',
+    message: err.message 
+  });
 });
 
 app.listen(PORT, () => {

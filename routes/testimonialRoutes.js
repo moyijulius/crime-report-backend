@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const Testimonial = require('../models/testimonial');
 
+router.options('/', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.sendStatus(200);
+});
+
+
 // Get all approved testimonials
 router.get('/', async (req, res) => {
   try {

@@ -4,6 +4,20 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const User = require('../models/User');
 const authenticateToken = require('../middleware/authenticateToken');
+// Base route to document available endpoints
+router.get('/', (req, res) => {
+  res.json({
+    status: 'Auth Endpoints',
+    endpoints: {
+      register: 'POST /register',
+      login: 'POST /login',
+      profile: {
+        get: 'GET /profile (requires auth)',
+        update: 'PUT /profile (requires auth)'
+      }
+    }
+  });
+});
 
 // Register Route
 router.post('/register', async (req, res) => {
